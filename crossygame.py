@@ -94,26 +94,25 @@ MAX_LEVELS = {
 }
 
 
-def to_tuple(board_1):
-    return tuple(square for row in board_1 for square in row)
+def get_yx(board, idx):
+    return divmod(idx, int(len(board) ** 0.5))
 
 
-def to_board(t):
-    board_size = int(len(t) ** 0.5)
-    return [list(t[i * board_size : (i + 1) * board_size]) for i in range(board_size)]
+def get_idx(board, y, x):
+    return int(len(board) ** 0.5) * y + x
 
 
 def is_valid_board(s, board_size):
     if not all(c.isdigit() for c in s):
         return False
-    boards_l = list(map(int, s))
-    board_l_1 = boards_l[: board_size**2]
-    board_l_2 = boards_l[board_size**2 :]
+    boards = list(map(int, s))
+    board_1 = boards[: board_size**2]
+    board_2 = boards[board_size**2 :]
     squares = sorted(BOARD_TUPLE[board_size])
-    if not sorted(board_l_1) == sorted(board_l_2) == squares:
+    if not sorted(board_1) == sorted(board_2) == squares:
         return False
-    walls_1 = [i for i, square in enumerate(board_l_1) if square == WALL.id]
-    walls_2 = [i for i, square in enumerate(board_l_2) if square == WALL.id]
+    walls_1 = [i for i, square in enumerate(board_1) if square == WALL.id]
+    walls_2 = [i for i, square in enumerate(board_2) if square == WALL.id]
     return walls_1 == walls_2
 
 
@@ -124,7 +123,7 @@ def get_ascii_boards(board_1, board_2, pattern_size):
     (width,) = set(
         len(s.pattern[pattern_size][i]) for i in range(height) for s in SQUARES
     )
-    board_size = len(board_1)
+    board_size = int(len(board_1) ** 0.5)
     line = "-" * ((width + 1) * board_size + 1)
     sep = " " * (width - 1) + "║" + " " * (width - 1)
     grid = line + sep + line + "\n"
@@ -132,7 +131,7 @@ def get_ascii_boards(board_1, board_2, pattern_size):
     def _add_board(_board, _i, _j):
         vbar = "|"
         ascii_boards.append((vbar, 0))
-        for square in _board[_i]:
+        for square in _board[_i * board_size : (_i + 1) * board_size]:
             s = SQUARES[square]
             ascii_boards.append((s.pattern[pattern_size][_j], s.color))
             ascii_boards.append((vbar, 0))
@@ -142,7 +141,7 @@ def get_ascii_boards(board_1, board_2, pattern_size):
         for j in range(height):
             _add_board(board_1, i, j)
             ascii_boards.append((sep, 0))
-            _add_board(to_board(board_2), i, j)
+            _add_board(board_2, i, j)
             ascii_boards.append(("\n", 0))
         ascii_boards.append((grid, 0))
 
@@ -150,31 +149,29 @@ def get_ascii_boards(board_1, board_2, pattern_size):
 
 
 def get_empty_square(board_1):
-    board_size = len(board_1)
-    for y in range(board_size):
-        for x in range(board_size):
-            if board_1[y][x] == EMPTY.id:
-                return y, x
-    raise ValueError("No empty square")
+    return board_1.index(EMPTY.id)
 
 
 def get_legal_moves(board_1):
-    board_size = len(board_1)
+    board_size = int(len(board_1) ** 0.5)
     legal_moves = []
-    y, x = get_empty_square(board_1)
+    idx = get_empty_square(board_1)
+    y, x = get_yx(board_1, idx)
     for move in (NW, N, NE, W, E, SW, S, SE):
         new_y, new_x = y - move[0], x - move[1]
         if 0 <= new_y < board_size and 0 <= new_x < board_size:
-            new_square = SQUARES[board_1[new_y][new_x]]
+            new_square = SQUARES[board_1[get_idx(board_1, new_y, new_x)]]
             if move in new_square.moves:
                 legal_moves.append(move)
     return legal_moves
 
 
 def make_move(board_1, move):
-    y, x = get_empty_square(board_1)
+    idx = get_empty_square(board_1)
+    y, x = get_yx(board_1, idx)
     new_y, new_x = y - move[0], x - move[1]
-    board_1[new_y][new_x], board_1[y][x] = board_1[y][x], board_1[new_y][new_x]
+    new_idx = get_idx(board_1, new_y, new_x)
+    board_1[new_idx], board_1[idx] = board_1[idx], board_1[new_idx]
     return board_1
 
 
@@ -183,7 +180,7 @@ def undo(board_1, move):
 
 
 def solve(board_1, board_2=None, max_depth=None):
-    queue = [[(to_tuple(board_1), None)]]
+    queue = [[(tuple(board_1), None)]]
     path = []
     expanded = []
     i = 0
@@ -191,24 +188,21 @@ def solve(board_1, board_2=None, max_depth=None):
         path = queue.pop(0)
         if max_depth and len(path) >= max_depth + 1:
             break
-        last_board_tuple = path[-1][0]
-        if last_board_tuple in expanded:
+        last_board = path[-1][0]
+        if last_board in expanded:
             continue
 
-        board = to_board(last_board_tuple)
-        legal_moves = get_legal_moves(board)
+        legal_moves = get_legal_moves(last_board)
         if not board_2:
             random.shuffle(legal_moves)
         for move in legal_moves:
-            board = make_move(board, move)
-            board_tuple = to_tuple(board)
-            if board_tuple not in expanded:
-                queue.append(path + [(board_tuple, move)])
-            board = undo(board, move)
+            board = tuple(make_move(list(last_board), move))
+            if board not in expanded:
+                queue.append(path + [(board, move)])
 
-        expanded.append(last_board_tuple)
+        expanded.append(last_board)
         i += 1
-        if board_2 and last_board_tuple == board_2:
+        if board_2 and last_board == board_2:
             break
         if max_depth and i > max_depth**2:
             break
@@ -217,10 +211,9 @@ def solve(board_1, board_2=None, max_depth=None):
 
 
 def generate_random_boards(board_size, level):
-    squares = list(BOARD_TUPLE[board_size])
+    board_1 = list(BOARD_TUPLE[board_size])
     while True:
-        random.shuffle(squares)
-        board_1 = to_board(tuple(squares))
+        random.shuffle(board_1)
         path = solve(board_1, max_depth=level)
         if len(path) >= level:
             break
@@ -259,7 +252,7 @@ def _play(stdscr):
             else:
                 board_1, board_2, best_moves = generate_random_boards(board_size, level)
             played_moves = []
-            puzzle_id = "".join(map(str, to_tuple(board_1) + board_2))
+            puzzle_id = "".join(map(str, tuple(board_1) + board_2))
             init = False
 
         if len(moves_to_play) == 0:
@@ -293,7 +286,7 @@ def _play(stdscr):
             stdscr.addstr("\n")
             stdscr.refresh()
 
-        if to_tuple(board_1) == board_2:
+        if tuple(board_1) == board_2:
             stdscr.addstr("Congrats! ")
             solved = True
         else:
@@ -340,8 +333,8 @@ def _play(stdscr):
             curses.noecho()
             if not is_valid_board(s, board_size):
                 continue
-            b = tuple(map(int, s))
-            _board_1, _board_2 = to_board(b[: board_size**2]), b[board_size**2 :]
+            b = list(map(int, s))
+            _board_1, _board_2 = b[: board_size**2], tuple(b[board_size**2 :])
             path = solve(_board_1, board_2=_board_2)
             _best_moves = [p[1] for p in path]
             if path[-1][0] == _board_2:
