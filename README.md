@@ -1,1 +1,3 @@
 # crossygame
+
+`pip install crossygame`
