@@ -360,7 +360,8 @@ def _play(stdscr):
             stdscr.addstr(f"Enter a level (1-{max_level}) & press ENTER: ")
             s = stdscr.getstr(len(str(max_level))).decode()
             curses.noecho()
-            if s.isdigit() and 1 <= (level := int(s)) <= max_level:
+            if s.isdigit() and 1 <= int(s) <= max_level:
+                level = int(s)
                 init = True
 
         elif c in (ord("q"), ord("Q")):
