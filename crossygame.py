@@ -368,7 +368,7 @@ def _play(stdscr):
             _board_2 = tuple(boards[n:])
             path = solve(_board_1, board_2=_board_2)
             _best_moves = [p[1] for p in path]
-            if path[-1][0] == _board_2:
+            if path and path[-1][0] == _board_2:
                 init = True
                 imported = True
 
