@@ -195,7 +195,8 @@ def get_ascii_boards(board_1, board_2, pattern_size):
     def _add_board(_board, _i, _j):
         vbar = "|"
         ascii_boards.append((vbar, 0))
-        for square in _board[_i * board_size : (_i + 1) * board_size]:
+        start, end = _i * board_size, (_i + 1) * board_size
+        for square in _board[start:end]:
             s = SQUARES[square]
             ascii_boards.append((s.pattern[pattern_size][_j], s.color))
             ascii_boards.append((vbar, 0))
@@ -216,8 +217,9 @@ def is_valid_board(s, board_size):
     if not all(c.isdigit() for c in s):
         return False
     boards = list(map(int, s))
-    board_1 = boards[: board_size**2]
-    board_2 = boards[board_size**2 :]
+    n = board_size**2
+    board_1 = boards[:n]
+    board_2 = boards[n:]
     if not sorted(board_1) == sorted(board_2) == sorted(BOARD[board_size]):
         return False
     walls_1 = [i for i, square in enumerate(board_1) if square == WALL.id]
@@ -337,8 +339,9 @@ def _play(stdscr):
             if not is_valid_board(s, board_size):
                 continue
             boards = list(map(int, s))
-            _board_1 = boards[: board_size**2]
-            _board_2 = tuple(boards[board_size**2 :])
+            n = board_size**2
+            _board_1 = boards[:n]
+            _board_2 = tuple(boards[n:])
             path = solve(_board_1, board_2=_board_2)
             _best_moves = [p[1] for p in path]
             if path[-1][0] == _board_2:
