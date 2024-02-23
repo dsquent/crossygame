@@ -137,6 +137,27 @@ def undo(board_1, move):
     return make_move(board_1, (-move[0], -move[1]))
 
 
+def has_locked_squares(board_1):
+    board_size = int(len(board_1) ** 0.5)
+    movable_squares = (CROSS.id, TRIANGLE.id, SQUARE.id)
+    for idx, square in enumerate(board_1):
+        if square not in movable_squares:
+            continue
+        is_locked = True
+        y, x = get_yx(board_size, idx)
+        for move in SQUARES[square].moves:
+            new_y = y + move[0]
+            new_x = x + move[1]
+            if 0 <= new_y < board_size and 0 <= new_x < board_size:
+                new_idx = get_idx(board_size, new_y, new_x)
+                if board_1[new_idx] in movable_squares:
+                    is_locked = False
+                    break
+        if is_locked:
+            return True
+    return False
+
+
 def solve(board_1, board_2=None, max_depth=None):
     queue = [[(tuple(board_1), None)]]
     path = []
@@ -169,9 +190,12 @@ def solve(board_1, board_2=None, max_depth=None):
 
 
 def generate_random_boards(board_size, level):
+    path = None
     board_1 = list(BOARD[board_size])
     while True:
         random.shuffle(board_1)
+        if has_locked_squares(board_1):
+            continue
         path = solve(board_1, max_depth=level)
         if len(path) >= level:
             break
